@@ -247,6 +247,8 @@ tr.clickable:hover td{background:rgba(196,98,45,0.03)}
   </div>
 
   <div class="content">
+<div id="debug-panel" style="background:#FFF3CD;border:1px solid #FFB020;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:12px;font-family:monospace;white-space:pre-wrap;display:none"></div>
+
 
     <!-- VIEW: OVERVIEW -->
     <div class="view active" id="view-overview">
@@ -406,8 +408,19 @@ async function sb(table, query="") {
 }
 
 async function loadData() {
+  const dbg = document.getElementById("debug-panel");
+  dbg.style.display = "block";
+  dbg.textContent = "⏳ Chamando Supabase...\nURL: " + SUPABASE_URL + "\nKEY: " + SUPABASE_KEY.substring(0,20) + "...";
+
   allEntrevistas = await sb("diagnostico_entrevistas", "?order=created_at.desc");
   allProcessos = await sb("diagnostico_processos", "?order=created_at.desc");
+  
+  dbg.textContent = "✅ Resposta recebida\nEntrevistas: " + JSON.stringify(allEntrevistas).substring(0,200) + "\nProcessos count: " + allProcessos.length;
+  if (allEntrevistas.length === 0) {
+    dbg.style.background = "#FFD2D2";
+    dbg.style.borderColor = "#E8521A";
+    dbg.textContent = "❌ Array vazio!\nURL usada: " + SUPABASE_URL + "/rest/v1/diagnostico_entrevistas?order=created_at.desc\nKey: " + SUPABASE_KEY.substring(0,30) + "...\n\nAbra o Console (F12) para ver o erro detalhado.";
+  }
 
   // enrich processos with area
   const entMap = {};
