@@ -318,7 +318,7 @@ tr.clickable:hover td{background:rgba(196,98,45,0.03)}
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Nome</th><th>Área</th><th>Maior dor</th><th>Oportunidade</th><th>Data</th><th></th><th></th></tr>
+              <tr><th>Nome</th><th>Área</th><th>Maior dor</th><th>Oportunidade</th><th>Nota</th><th>Data</th><th></th><th></th></tr>
             </thead>
             <tbody id="entrevistas-tbody"></tbody>
           </table>
@@ -525,6 +525,7 @@ function renderEntrevistasTable(ents) {
       <td style="max-width:200px;color:var(--ink3);font-size:12px">${e.maior_dor||"—"}</td>
       <td style="max-width:180px;color:var(--accent);font-size:12px">${e.oportunidade||"—"}</td>
       <td style="color:var(--ink3);font-family:'Noto Sans',sans-serif;font-size:11px">${new Date(e.created_at).toLocaleDateString('pt-BR')}</td>
+      <td style="color:var(--ink3);font-weight:500;font-size:13px">${e.avaliacao_nota||'—'}</td>
       <td style="color:var(--ink3);font-size:12px">ver →</td>
       <td onclick="event.stopPropagation()"><button class="btn-delete" onclick="deleteEntrevista('${e.id}','${(e.nome||'').replace(/'/g,'')}')">🗑</button></td>
     </tr>`).join("");
@@ -650,10 +651,11 @@ function openModal(id) {
 
   let html = "";
 
-  if (ent.maior_dor || ent.oportunidade) {
+  if (ent.maior_dor || ent.oportunidade || ent.avaliacao_nota) {
     html += `<div class="modal-section">`;
     if (ent.maior_dor) html += `<div class="modal-section-label">Maior dor</div><div class="modal-section-value" style="color:var(--accent);margin-bottom:12px">${ent.maior_dor}</div>`;
-    if (ent.oportunidade) html += `<div class="modal-section-label">Oportunidade</div><div class="modal-section-value" style="color:var(--green)">${ent.oportunidade}</div>`;
+    if (ent.oportunidade) html += `<div class="modal-section-label">Oportunidade</div><div class="modal-section-value" style="color:var(--green);margin-bottom:12px">${ent.oportunidade}</div>`;
+    if (ent.avaliacao_nota) html += `<div class="modal-section-label">Avaliação da entrevista</div><div class="modal-section-value"><span style="font-size:18px;font-weight:600;color:var(--ink)">${ent.avaliacao_nota}</span>${ent.avaliacao_comentario ? `<div style="font-size:13px;color:var(--ink3);margin-top:4px">${ent.avaliacao_comentario}</div>` : ''}</div>`;
     html += `</div>`;
   }
 
