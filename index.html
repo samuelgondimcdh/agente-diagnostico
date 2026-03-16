@@ -426,6 +426,8 @@ let messages = [];
 let phase = 0;
 let isTyping = false;
 let ended = false;
+let entrevistaId = null;  // ID do registro no Supabase (criado na 1a mensagem do user)
+let autoSaveTimer = null;
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("user-input");
@@ -571,42 +573,56 @@ function showSummary(resumoText) {
   if (last) last.appendChild(card);
 }
 
-async function saveToSupabase(resumoText) {
+// ── AUTO-SAVE ─────────────────────────────────────────────────────
+async function createOrUpdateEntrevista(final = false, resumoText = null) {
   try {
-    // Parse top-level fields
-    const nome = (resumoText.match(/^nome:\s*(.+)/m) || [])[1]?.trim() || null;
-    const area = (resumoText.match(/^area:\s*(.+)/m) || [])[1]?.trim() || null;
-    const maiorDor = (resumoText.match(/^maior_dor:\s*(.+)/m) || [])[1]?.trim() || null;
-    const oportunidade = (resumoText.match(/^oportunidade_imediata:\s*(.+)/m) || [])[1]?.trim() || null;
-
     const headers = {
       "Content-Type": "application/json",
       "apikey": SUPABASE_KEY,
       "Authorization": "Bearer " + SUPABASE_KEY,
       "Prefer": "return=representation"
     };
-    console.log("Saving to Supabase...");
 
-    // Insert entrevista
-    const entRes = await fetch(SUPABASE_URL + "/rest/v1/diagnostico_entrevistas", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        nome, area,
-        transcricao: messages,
-        maior_dor: maiorDor,
-        oportunidade,
-        avaliacao_nota: (resumoText.match(/^avaliacao_nota:\s*(.+)/m) || [])[1]?.trim() || null,
-        avaliacao_comentario: (resumoText.match(/^avaliacao_comentario:\s*(.+)/m) || [])[1]?.trim() || null,
-        status: "concluida"
-      })
-    });
-    const entData = await entRes.json();
-    console.log("Insert entrevista response:", JSON.stringify(entData));
-    const entrevistaId = entData[0]?.id;
+    // Extract partial info from conversation
+    const firstUserMsg = messages.find(m => m.role === "user")?.content || "";
+    const partialNome = firstUserMsg.split(",")[0]?.trim() || null;
 
-    // Parse and insert processes
-    if (entrevistaId) {
+    const payload = {
+      transcricao: messages,
+      status: final ? "concluida" : "em_andamento",
+      nome: resumoText ? (resumoText.match(/^nome:\s*(.+)/m) || [])[1]?.trim() : partialNome,
+      area: resumoText ? (resumoText.match(/^area:\s*(.+)/m) || [])[1]?.trim() : null,
+      maior_dor: resumoText ? (resumoText.match(/^maior_dor:\s*(.+)/m) || [])[1]?.trim() : null,
+      oportunidade: resumoText ? (resumoText.match(/^oportunidade_imediata:\s*(.+)/m) || [])[1]?.trim() : null,
+      avaliacao_nota: resumoText ? (resumoText.match(/^avaliacao_nota:\s*(.+)/m) || [])[1]?.trim() : null,
+      avaliacao_comentario: resumoText ? (resumoText.match(/^avaliacao_comentario:\s*(.+)/m) || [])[1]?.trim() : null,
+    };
+
+    if (!entrevistaId) {
+      // CREATE
+      const res = await fetch(SUPABASE_URL + "/rest/v1/diagnostico_entrevistas", {
+        method: "POST", headers,
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      entrevistaId = data[0]?.id;
+      console.log("Entrevista criada:", entrevistaId);
+    } else {
+      // UPDATE
+      await fetch(`${SUPABASE_URL}/rest/v1/diagnostico_entrevistas?id=eq.${entrevistaId}`, {
+        method: "PATCH", headers,
+        body: JSON.stringify(payload)
+      });
+      console.log("Entrevista atualizada:", entrevistaId);
+    }
+
+    // If final, save processes too
+    if (final && resumoText && entrevistaId) {
+      // Delete old processes first (in case of update)
+      await fetch(`${SUPABASE_URL}/rest/v1/diagnostico_processos?entrevista_id=eq.${entrevistaId}`, {
+        method: "DELETE", headers: {...headers}
+      });
+      // Insert new ones
       const processBlocks = resumoText.split(/^\s*-\s*processo:/m).slice(1);
       for (const block of processBlocks) {
         const proc = {
@@ -620,17 +636,40 @@ async function saveToSupabase(resumoText) {
           contexto: (block.match(/contexto:\s*(.+)/) || [])[1]?.trim() || null,
         };
         await fetch(SUPABASE_URL + "/rest/v1/diagnostico_processos", {
-          method: "POST",
-          headers,
-          body: JSON.stringify(proc)
+          method: "POST", headers, body: JSON.stringify(proc)
         });
       }
     }
-    return true;
   } catch(e) {
-    console.error("Erro ao salvar no Supabase:", e);
-    return false;
+    console.error("Auto-save error:", e);
   }
+}
+
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => createOrUpdateEntrevista(false), 3000);
+}
+
+// Save on page close
+window.addEventListener("beforeunload", () => {
+  if (messages.length > 1 && !ended) {
+    // Use sendBeacon for reliability on unload
+    const payload = JSON.stringify({
+      id: entrevistaId,
+      transcricao: messages,
+      status: "abandonada"
+    });
+    navigator.sendBeacon(
+      SUPABASE_URL + (entrevistaId
+        ? `/rest/v1/diagnostico_entrevistas?id=eq.${entrevistaId}`
+        : "/rest/v1/diagnostico_entrevistas"),
+      new Blob([payload], { type: "application/json" })
+    );
+  }
+});
+
+async function saveToSupabase(resumoText) {
+  await createOrUpdateEntrevista(true, resumoText);
 }
 
 function endInterview(resumoText) {
@@ -739,6 +778,7 @@ function submit() {
   input.style.height = "auto";
   sendBtn.disabled = true;
   addMessage("user", text);
+  scheduleAutoSave();
   callClaude(text);
 }
 
