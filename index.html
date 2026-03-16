@@ -349,7 +349,12 @@ body {
   </div>
 </header>
 
-<main class="chat-area" id="chat"></main>
+<main class="chat-area" id="chat">
+  <div id="chat-footer" style="display:none;text-align:center;padding:48px 16px 16px;font-family:'Noto Sans',sans-serif;font-size:12px;color:var(--ink3);line-height:1.9">
+    Feito com 🧡 na Carpediem Homes<br>
+    <span style="font-size:11px;opacity:0.65">Em busca de um dia a dia mais produtivo.</span>
+  </div>
+</main>
 
 <div class="input-area" id="input-area">
   <div class="input-wrap">
@@ -369,11 +374,6 @@ body {
 const SYSTEM_PROMPT = `Você é Diana, a IA da Carpediem Homes especializada em diagnóstico operacional. Você foi criada especificamente para conversar com colaboradores e líderes da Carpediem e entender, de forma natural e humana, quais processos do dia a dia são repetitivos, manuais, custosos ou que poderiam ser automatizados ou otimizados.
 
 SEU OBJETIVO: sair com um mapa claro dos processos críticos de cada pessoa — com contexto suficiente para propor soluções reais.
-
-COMO VOCÊ SE APRESENTA (primeiras mensagens — envie em 3 mensagens separadas, cada uma curta):
-1. "Olá, tudo bem? 😊 Obrigada pelo seu tempo — é muito importante pra gente."
-2. "Eu sou a Diana, uma IA criada sob medida aqui na Carpediem Homes, já como parte do nosso processo de maturidade em IA. Minha função é entender como as coisas funcionam na prática — os processos que consomem tempo, que são repetitivos ou que poderiam ser feitos de forma mais inteligente."
-3. "O que você vai compartilhar aqui vai direto alimentar as próximas melhorias da empresa. Não precisa escolher palavras — pode escrever como preferir, do jeito que falar. Vamos demorar entre 5 e 10 minutos. Pode começar me dizendo seu nome e em qual área você atua? 🙂"
 
 COMO VOCÊ CONDUZ A ENTREVISTA:
 - Tom: natural, humano, informal mas inteligente. Como uma colega curiosa e atenta, não um robô de formulário.
@@ -645,6 +645,7 @@ function endInterview(resumoText) {
   banner.innerHTML = `Entrevista concluída · obrigado pela participação<br>
     <button class="restart-btn" onclick="location.reload()">Nova entrevista</button>`;
   chat.appendChild(banner);
+  document.getElementById("chat-footer").style.display = "block";
   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
@@ -743,18 +744,30 @@ function submit() {
 
 // Kick off
 setPhase(0);
-// Start with retry in case proxy cold-starts
-(async function() {
-  try {
-    await callClaude(null);
-  } catch(e) {
-    setTimeout(() => callClaude(null), 2000);
+// Send all 3 greeting messages at once, then start the conversation
+async function startConversation() {
+  sendBtn.disabled = true;
+
+  const greetings = [
+    "Olá, tudo bem? 😊 Obrigada pelo seu tempo — é muito importante pra gente.",
+    "Eu sou a Diana, uma IA criada sob medida aqui na Carpediem Homes, já como parte do nosso processo de maturidade em IA. Minha função é entender como as coisas funcionam na prática — os processos que consomem tempo, que são repetitivos ou que poderiam ser feitos de forma mais inteligente.",
+    "O que você vai compartilhar aqui vai direto alimentar as próximas melhorias da empresa. Não precisa escolher palavras — pode escrever do jeito que preferir. Vamos demorar entre 5 e 10 minutos. Pode começar me dizendo seu nome e em qual área você atua? 🙂"
+  ];
+
+  for (let i = 0; i < greetings.length; i++) {
+    await new Promise(r => setTimeout(r, i === 0 ? 300 : 900));
+    addMessage("agent", greetings[i]);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   }
-})();
+
+  // Push greeting into message history so the AI has context
+  messages.push({ role: "assistant", content: greetings.join("\n\n") });
+  setPhase(1);
+  sendBtn.disabled = false;
+  input.focus();
+}
+
+startConversation();
 </script>
-<div style="text-align:center;padding:32px 16px 20px;font-family:'Noto Sans',sans-serif;font-size:12px;color:var(--ink3);line-height:1.8;border-top:1px solid var(--border2);margin-top:40px">
-  Feito com 🧡 na Carpediem Homes<br>
-  <span style="font-size:11px;opacity:0.7">Em busca de um dia a dia mais produtivo.</span>
-</div>
 </body>
 </html>
