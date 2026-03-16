@@ -385,8 +385,15 @@ let filteredProcessos = [];
 let charts = {};
 
 async function sb(table, query="") {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {headers: SB_HEADERS});
-  return r.json();
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {headers: SB_HEADERS});
+    const data = await r.json();
+    if (!r.ok) { console.error("Supabase error:", table, data); return []; }
+    return Array.isArray(data) ? data : [];
+  } catch(e) {
+    console.error("Fetch error:", table, e);
+    return [];
+  }
 }
 
 async function loadData() {
@@ -427,6 +434,7 @@ function applyFilters() {
   const filtEnt = area ? allEntrevistas.filter(e => e.area === area) : allEntrevistas;
 
   // metrics
+  console.log("Entrevistas:", filtEnt.length, "Processos:", filteredProcessos.length);
   document.getElementById("m-entrevistas").textContent = filtEnt.length;
   document.getElementById("m-processos").textContent = filteredProcessos.length;
   const areas = [...new Set(filtEnt.map(e => e.area).filter(Boolean))];
