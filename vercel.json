@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/dashboard-diagnostico", "destination": "/dashboard-diagnostico/index.html" },
+    { "source": "/dashboard-diagnostico/", "destination": "/dashboard-diagnostico/index.html" },
+    { "source": "/test-supabase", "destination": "/test-supabase.html" }
+  ]
+}
