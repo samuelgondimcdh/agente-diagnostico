@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Teste Supabase</title></head>
+<body style="font-family:monospace;padding:20px">
+<h3>Teste de conexão Supabase</h3>
+<pre id="out">Carregando...</pre>
+<script>
+const URL = "https://ucavfotyciwnqwurzjny.supabase.co";
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjYXZmb3R5Y2l3bnF3dXJ6am55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzUzNjYsImV4cCI6MjA3MzU1MTM2Nn0.nE_W8wZZvJfzlvhP83ge1J0ooS3EcFVSlQYK28eTGU0";
+
+async function test() {
+  const out = document.getElementById("out");
+  try {
+    const r = await fetch(`${URL}/rest/v1/diagnostico_entrevistas?select=id,nome,area,status&order=created_at.desc`, {
+      headers: {
+        "apikey": KEY,
+        "Authorization": "Bearer " + KEY
+      }
+    });
+    const text = await r.text();
+    out.textContent = `Status: ${r.status}\n\nResposta:\n${text}`;
+  } catch(e) {
+    out.textContent = "ERRO: " + e.message;
+  }
+}
+test();
+</script>
+</body>
+</html>
