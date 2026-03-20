@@ -6,6 +6,7 @@
 <title>Carpediem · Painel Diagnóstico</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -223,7 +224,7 @@ tr:last-child td{border-bottom:none}
     <!-- PROCESSOS -->
     <div class="view" id="view-processos">
       <div class="card">
-        <div class="card-head-row"><span class="card-head" style="margin:0">Processos mapeados</span><span class="badge b-gray" id="proc-cnt"></span></div>
+        <div class="card-head-row"><span class="card-head" style="margin:0">Processos mapeados</span><div style="display:flex;gap:8px;align-items:center"><span class="badge b-gray" id="proc-cnt"></span><button class="btn" onclick="exportXLSX()" style="font-size:11px;padding:5px 12px">⬇ Exportar XLSX</button></div></div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Processo</th><th>Tipo</th><th>Frequência</th><th>Pessoas</th><th>Área</th></tr></thead>
@@ -478,6 +479,38 @@ function toast(msg) {
   const t=document.getElementById("toast");
   t.textContent=msg; t.classList.add("on");
   setTimeout(()=>t.classList.remove("on"),2800);
+}
+
+// EXPORT XLSX
+function exportXLSX() {
+  if (!fProcs.length) { toast("Nenhum processo para exportar."); return; }
+
+  const rows = fProcs.map(p => ({
+    "Processo": p.processo || "—",
+    "Tipo": p.tipo || "—",
+    "Frequência": p.frequencia || "—",
+    "Pessoas envolvidas": p.pessoas_envolvidas || "—",
+    "Ferramentas": p.ferramentas || "—",
+    "Impacto se falha": p.impacto_se_falha || "—",
+    "Contexto": p.contexto || "—",
+    "Área": p._area || "—",
+    "Entrevistado": p._nome || "—",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Column widths
+  ws["!cols"] = [
+    {wch:40},{wch:20},{wch:18},{wch:22},{wch:24},
+    {wch:36},{wch:50},{wch:16},{wch:20}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Processos");
+
+  const date = new Date().toLocaleDateString("pt-BR").replace(/\//g,"-");
+  XLSX.writeFile(wb, `carpediem-processos-${date}.xlsx`);
+  toast("Arquivo exportado com sucesso!");
 }
 
 // INIT — direto, sem auth, sem condições
